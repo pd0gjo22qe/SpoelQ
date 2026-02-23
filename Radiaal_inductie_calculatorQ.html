@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PD0G – Radiaal / Loaded Dipole Calculator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700&display=swap');
+
+:root {
+  --bg:      #0b0f14;
+  --panel:   #111820;
+  --card:    #0d1420;
+  --border:  #1e2d3d;
+  --text:    #cdd9e5;
+  --muted:   #5a7a96;
+  --teal:    #00d4aa;
+  --orange:  #ff7040;
+  --purple:  #9b72cf;
+  --yellow:  #e6c229;
+  --red:     #f47068;
+  --blue:    #58a6ff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  max-width: 1400px;
+  margin-left: auto; margin-right: auto;
+}
+.badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; color: var(--teal);
+  background: rgba(0,212,170,.1);
+  border: 1px solid rgba(0,212,170,.3);
+  padding: 5px 12px; border-radius: 3px;
+  letter-spacing: 2px; white-space: nowrap;
+}
+header h1 { font-size: 18px; font-weight: 700; line-height: 1.2; }
+header p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 14px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Op schermen smaller dan 900px: alles onder elkaar */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+}
+.panel-title {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mode-toggle { display: flex; gap: 6px; margin-bottom: 18px; }
+.mode-btn {
+  flex: 1; padding: 7px 8px;
+  border-radius: 5px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .18s;
+}
+.mode-btn.active { background: rgba(0,212,170,.1); border-color: var(--teal); color: var(--teal); }
+
+.slider-group { margin-bottom: 14px; }
+.slider-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.slider-label .name { font-size: 12px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+.slider-label .val  { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: bold; }
+
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 3px;
+  background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--teal); border: 2px solid var(--bg);
+  box-shadow: 0 0 8px rgba(0,212,170,.5); cursor: pointer;
+}
+.sg-freq input[type=range]::-webkit-slider-thumb { background: var(--orange); box-shadow: 0 0 8px rgba(255,112,64,.5); }
+.sg-dist input[type=range]::-webkit-slider-thumb { background: var(--purple); box-shadow: 0 0 8px rgba(155,114,207,.5); }
+.sg-wire input[type=range]::-webkit-slider-thumb { background: var(--yellow); box-shadow: 0 0 8px rgba(230,194,41,.5); }
+.sg-cd   input[type=range]::-webkit-slider-thumb { background: var(--blue);   box-shadow: 0 0 8px rgba(88,166,255,.5); }
+.sg-pit  input[type=range]::-webkit-slider-thumb { background: var(--red);    box-shadow: 0 0 8px rgba(244,112,104,.5); }
+
+.sg-freq .val { color: var(--orange); }
+.sg-dist .val { color: var(--purple); }
+.sg-wire .val { color: var(--yellow); }
+.sg-len  .val { color: var(--teal); }
+.sg-cd   .val { color: var(--blue); }
+.sg-pit  .val { color: var(--red); }
+
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rcard {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 11px 10px; text-align: center;
+}
+.rcard .rv {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px; font-weight: bold; display: block; margin-bottom: 3px;
+}
+.rcard .rl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.rcard.teal   .rv { color: var(--teal); }
+.rcard.orange .rv { color: var(--orange); }
+.rcard.purple .rv { color: var(--purple); }
+.rcard.yellow .rv { color: var(--yellow); }
+.rcard.blue   .rv { color: var(--blue); }
+.rcard.red    .rv { color: var(--red); }
+
+.chart-col { display: flex; flex-direction: column; gap: 12px; }
+.chart-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab {
+  font-family: 'Share Tech Mono', monospace; font-size: 11px; padding: 5px 12px;
+  border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.tab.active         { border-color: var(--teal);   color: var(--teal);   background: rgba(0,212,170,.08); }
+.tab.active.orange  { border-color: var(--orange);  color: var(--orange);  background: rgba(255,112,64,.08); }
+.tab.active.purple  { border-color: var(--purple);  color: var(--purple);  background: rgba(155,114,207,.08); }
+.tab.active.yellow  { border-color: var(--yellow);  color: var(--yellow);  background: rgba(230,194,41,.08); }
+
+canvas {
+  display: block; width: 100%; border-radius: 6px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+
+/* Verification badge */
+.verify-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,212,170,.07); border: 1px solid rgba(0,212,170,.25);
+  border-radius: 4px; padding: 6px 10px;
+  font-size: 11px; color: var(--muted); font-family: 'Share Tech Mono', monospace;
+  margin-top: 10px; width: 100%;
+}
+.verify-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+.verify-badge.warn .dot { background: var(--orange); }
+
+/* Responsive: stapel kolommen onder elkaar op smalle schermen */
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  body { padding: 8px; }
+  header h1 { font-size: 15px; }
+  header p  { font-size: 11px; }
+  .chart-tabs { gap: 5px; }
+  .tab { font-size: 10px; padding: 4px 8px; }
+}
+
+/* Extra smal (iframe in WordPress kolom ~520px) */
+@media (max-width: 600px) {
+  .layout { grid-template-columns: 1fr; gap: 8px; }
+  body { padding: 6px; }
+  .result-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .rcard .rv { font-size: 15px; }
+  .panel { padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">PD0G</div>
+  <div>
+    <h1>Radiaal / Loaded Dipole Inductantie Calculator</h1>
+    <p>Exacte VK3CPU formule · Nagaoka/Medhurst/Knight spoel-engine · Wikkelingen · Q-factor</p>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- LEFT -->
+<div style="display:flex;flex-direction:column;gap:12px;">
+
+  <div class="panel">
+    <div class="panel-title">Antenne Parameters</div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-dipole"   onclick="setMode('dipole')">½λ Dipool</button>
+      <button class="mode-btn"        id="btn-vertical" onclick="setMode('vertical')">¼λ Radiaal</button>
+    </div>
+
+    <div class="slider-group sg-freq">
+      <div class="slider-label">
+        <span class="name">f — Frequentie</span>
+        <span class="val" id="lbl-freq">7.100 MHz</span>
+      </div>
+      <input type="range" id="sl-freq" min="1.8" max="30" step="0.05" value="7.1" oninput="update()">
+    </div>
+
+    <div class="slider-group sg-len">
+      <div class="slider-label">
+        <span class="name">l — Antenne lengte</span>
+        <span class="val" id="lbl-len">80 %</span>
+      </div>
+      <input type="range" id="sl-len" min="10" max="99" step="0.5" value="80" oninput="update()">
+    </div>
+
+    <div class="slider-group sg-dist">
+      <div class="slider-label">
+        <span class="name">d — Spoelpositie</span>
+        <span class="val" id="lbl-dist">50 %</span>
+      </div>
+      <input type="range" id="sl-dist" min="10" max="80" step="0.5" value="50" oninput="update()">
+    </div>
+
+    <div class="slider-group sg-wire">
+      <div class="slider-label">
+        <span class="name">Ø — Draaddikte (AWG)</span>
+        <span class="val" id="lbl-wire">AWG 20</span>
+      </div>
+      <input type="range" id="sl-wire" min="10" max="40" step="1" value="20" oninput="update()">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="result-grid">
+      <div class="rcard teal">
+        <span class="rv" id="res-L">—</span>
+        <span class="rl">Inductantie</span>
+      </div>
+      <div class="rcard orange">
+        <span class="rv" id="res-X">—</span>
+        <span class="rl">Reactantie (Ω)</span>
+      </div>
+      <div class="rcard purple">
+        <span class="rv" id="res-elem">—</span>
+        <span class="rl">Element lengte</span>
+      </div>
+      <div class="rcard yellow">
+        <span class="rv" id="res-total">—</span>
+        <span class="rl">Totale dipool</span>
+      </div>
+    </div>
+
+    <!-- VK3CPU cross-check -->
+    <div class="verify-badge" id="verify-badge">
+      <div class="dot"></div>
+      <span id="verify-text">VK3CPU formule actief</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Spoel Dimensies</div>
+
+    <div class="slider-group sg-cd">
+      <div class="slider-label">
+        <span class="name">D — Spoel diameter</span>
+        <span class="val" id="lbl-cd">50 mm</span>
+      </div>
+      <input type="range" id="sl-cd" min="10" max="150" step="1" value="50" oninput="update()">
+    </div>
+
+    <div class="slider-group sg-pit">
+      <div class="slider-label">
+        <span class="name">p — Winding pitch</span>
+        <span class="val" id="lbl-pitch">2.0 ×Ø</span>
+      </div>
+      <input type="range" id="sl-pitch" min="1.0" max="4.0" step="0.1" value="2.0" oninput="update()">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="result-grid">
+      <div class="rcard blue">
+        <span class="rv" id="res-turns">—</span>
+        <span class="rl">Wikkelingen</span>
+      </div>
+      <div class="rcard red">
+        <span class="rv" id="res-Q">—</span>
+        <span class="rl">Q-factor</span>
+      </div>
+      <div class="rcard" style="grid-column:span 2;">
+        <span class="rv" id="res-coillen" style="color:var(--muted)">—</span>
+        <span class="rl">Spoel lengte</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="chart-col">
+
+  <div class="panel" style="padding:12px 16px;">
+    <div class="chart-tabs">
+      <button class="tab active" id="tab0" onclick="setTab(0)">L vs Frequentie</button>
+      <button class="tab"        id="tab1" onclick="setTab(1)">L vs Lengte %</button>
+      <button class="tab"        id="tab2" onclick="setTab(2)">L vs Positie d</button>
+      <button class="tab"        id="tab3" onclick="setTab(3)">Turns vs Freq</button>
+      <button class="tab"        id="tab4" onclick="setTab(4)">Q vs Frequentie</button>
+    </div>
+  </div>
+
+  <canvas id="chart-top"    height="260"></canvas>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <canvas id="chart-turns" height="220"></canvas>
+    <canvas id="chart-q"     height="220"></canvas>
+  </div>
+
+  <canvas id="chart-ant" height="110"></canvas>
+
+</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   AWG LOOKUP TABLE  (exact van VK3CPU broncode)
+═══════════════════════════════════════════════ */
+const AWG_MM = {
+  40:0.0799, 39:0.0897, 38:0.101, 37:0.113, 36:0.127,
+  35:0.143,  34:0.160,  33:0.180, 32:0.202, 31:0.227,
+  30:0.255,  29:0.286,  28:0.321, 27:0.361, 26:0.405,
+  25:0.455,  24:0.511,  23:0.573, 22:0.644, 21:0.723,
+  20:0.812,  19:0.912,  18:1.024, 17:1.150, 16:1.291,
+  15:1.450,  14:1.628,  13:1.828, 12:2.053, 11:2.305,
+  10:2.588
+};
+function awgToMm(awg) { return AWG_MM[awg] || 0.812; }
+
+/* ═══════════════════════════════════════════════
+   CORE FORMULA — exact VK3CPU getInductanceFromDimensions
+   f  = frequency MHz
+   A  = total dipole length in FEET  (= 2 × element)
+   B  = distance feedpoint to coil in FEET
+   D  = conductor diameter in INCHES
+   returns Xl in Ohm;  L = Xl / (2π·f·1e6)  in µH
+═══════════════════════════════════════════════ */
+function getInductanceFromDimensions(f, A, B, D) {
+  // Based on the equation image at VK3CPU:
+  // Uses the characteristic-impedance of a thin cylindrical antenna
+  // and the shortfall of the loaded element vs. a resonant quarter-wave.
+  const t1 = Math.log((24 * ((234/f) - B)) / D) - 1;
+  const t2 = (1 - (f*B)/234)**2 - 1;
+  const t3 = Math.log((24 * (A/2 - B)) / D) - 1;
+  const t4 = ((f*A/2 - f*B)/234)**2 - 1;
+  const t5 = 234/f - B;
+  const t6 = A/2 - B;
+  const k1 = 1e6 / (34 * Math.PI * f);
+  return k1 * (t1*t2/t5 - t3*t4/t6);   // Xl in Ohm
+}
+
+/* ═══════════════════════════════════════════════
+   ANTENNA LENGTH FORMULA  (exact VK3CPU)
+   freq_hz, l_pct → length_meters
+   dipole.length_meters = 299792458 * 0.0095 * l_pct / (2 * f_hz)
+═══════════════════════════════════════════════ */
+function antennaLengthMeters(freq_hz, l_pct) {
+  return 299792458.0 * 0.0095 * l_pct / (2.0 * freq_hz);
+  // Note: 0.0095 = velocity_factor * 2 / 100 * half
+  // This gives the TOTAL dipole length (both arms together)
+}
+
+/* ═══════════════════════════════════════════════
+   FULL ANTENNA CALC
+═══════════════════════════════════════════════ */
+let antennaMode = 'dipole';
+
+function calcAntenna(freq_mhz, l_pct, d_pct, awg) {
+  const f_hz    = freq_mhz * 1e6;
+  const wire_mm = awgToMm(awg);
+  const wire_in = wire_mm / 25.4;            // inches
+
+  // VK3CPU: total dipole length in meters
+  const length_m     = antennaLengthMeters(f_hz, l_pct);
+  const length_ft    = length_m * 3.28084;
+
+  // Distance from feedpoint to coil
+  const dist_ratio   = d_pct / 100.0;
+  const distance_m   = dist_ratio * 0.5 * length_m;   // VK3CPU: 0.005 * d_pct * length_m
+  const distance_ft  = distance_m * 3.28084;
+
+  // VK3CPU call: A = total dipole in feet, B = distance in feet, D = wire in inches
+  const Xl = getInductanceFromDimensions(freq_mhz, length_ft, distance_ft, wire_in);
+  const L_uh = Xl / (2 * Math.PI * freq_mhz);  // VK3CPU: divides by (2π·f_MHz) → µH
+
+  return {
+    freq_mhz,
+    L_uh:      Math.max(0, L_uh),
+    Xl:        Math.max(0, Xl),
+    element_m: length_m * 0.5,
+    total_m:   antennaMode === 'dipole' ? length_m : length_m * 0.5,
+    length_ft, distance_m, distance_ft, wire_in, wire_mm
+  };
+}
+
+/* ═══════════════════════════════════════════════
+   COIL ENGINE  (Nagaoka / Knight / Medhurst)
+═══════════════════════════════════════════════ */
+const MU0    = Math.PI * 4e-7;
+const CU_SIG = 58e6;
+
+function nagaokaCoeff(D, cd, sp, N) {
+  const h  = sp * cd;
+  const x  = D / (h * N);
+  const zk = 2 / (Math.PI * x);
+  const k0 = 1 / (Math.log(8 / Math.PI) - 0.5);
+  const k2 = 24 / (3 * Math.PI * Math.PI - 16);
+  const w  = -0.47 / Math.pow(0.755 + x, 1.44);
+  const p  = k0 + 3.437/x + k2/(x*x) + w;
+  return zk * (Math.log(1 + 1/zk) + 1/p);
+}
+
+function coilInductance(D, cd, sp, N) {
+  const a  = D / 2;
+  const kL = nagaokaCoeff(D, cd, sp, N);
+  return N*N * MU0 * Math.PI * a*a * kL / (N * sp * cd);  // Henries
+}
+
+function skinDepth(f) { return Math.sqrt(1 / (Math.PI * f * MU0 * CU_SIG)); }
+
+function dcResist(D, cd, sp, N) {
+  const r    = cd / 2;
+  const corr = Math.sqrt(1 + (sp*cd)*(sp*cd) / (D*D));
+  return 1.68e-8 * Math.PI * D * N * corr / (Math.PI * r*r);
+}
+
+function dc2ac(cd, sd) { return (cd*cd) / (4*(cd*sd - sd*sd)); }
+
+const PROX = [
+  [  0.0, 1.0,1.111, 1.25,1.429,1.667, 2.0, 2.5,3.333, 5.00,10.0 ],
+  [  0.0,5.31, 3.73, 2.74, 2.12, 1.74,1.44,1.20, 1.16, 1.07,1.02 ],
+  [  0.2,5.45, 3.84, 2.83, 2.20, 1.77,1.48,1.29, 1.19, 1.08,1.02 ],
+  [  0.4,5.65, 3.99, 2.97, 2.28, 1.83,1.54,1.33, 1.21, 1.08,1.03 ],
+  [  0.6,5.80, 4.11, 3.10, 2.38, 1.89,1.60,1.38, 1.22, 1.10,1.03 ],
+  [  0.8,5.80, 4.17, 3.20, 2.44, 1.92,1.64,1.42, 1.23, 1.10,1.03 ],
+  [  1.0,5.55, 4.10, 3.17, 2.47, 1.94,1.67,1.45, 1.24, 1.10,1.03 ],
+  [  2.0,4.10, 3.36, 2.74, 2.32, 1.98,1.74,1.50, 1.28, 1.13,1.04 ],
+  [  4.0,3.54, 3.05, 2.60, 2.27, 2.01,1.78,1.54, 1.32, 1.15,1.04 ],
+  [  6.0,3.31, 2.92, 2.60, 2.29, 2.03,1.80,1.56, 1.34, 1.16,1.04 ],
+  [  8.0,3.20, 2.90, 2.62, 2.34, 2.08,1.81,1.57, 1.34,1.165,1.04 ],
+  [ 10.0,3.23, 2.93, 2.65, 2.37, 2.10,1.83,1.58, 1.35, 1.17,1.04 ],
+  [999.0,3.41, 3.11,2.815, 2.51, 2.22,1.93,1.65,1.395, 1.19,1.05 ]
+];
+
+function proxFactor(D, cd, sp, N) {
+  const ld = N*sp*cd / D;
+  let i=1, j=1;
+  for(;i<PROX[0].length-1;i++) if(sp<PROX[0][i+1]) break;
+  for(;j<PROX.length-1;   j++) if(ld<PROX[j+1][0]) break;
+  const ti = (sp-PROX[0][i])/(PROX[0][i+1]-PROX[0][i]);
+  const t1 = PROX[j  ][i]+ti*(PROX[j  ][i+1]-PROX[j  ][i]);
+  const t2 = PROX[j+1][i]+ti*(PROX[j+1][i+1]-PROX[j+1][i]);
+  return t1+((ld-PROX[j][0])/(PROX[j+1][0]-PROX[j][0]))*(t2-t1);
+}
+
+function acResist(D, cd, sp, N, f) {
+  return dcResist(D,cd,sp,N) * dc2ac(cd, skinDepth(f)) * proxFactor(D,cd,sp,N);
+}
+
+function solveN(L_H, D, cd, sp) {
+  if(L_H <= 0) return 0;
+  let lo=0.5, hi=5000;
+  for(let k=0;k<90;k++) {
+    const mid=(lo+hi)/2;
+    coilInductance(D,cd,sp,mid) < L_H ? lo=mid : hi=mid;
+    if(hi-lo<0.02) break;
+  }
+  return (lo+hi)/2;
+}
+
+function fullCalc(freq_mhz, l_pct, d_pct, awg, coil_d_mm, pitch) {
+  const ant = calcAntenna(freq_mhz, l_pct, d_pct, awg);
+  const f   = freq_mhz * 1e6;
+  const D   = coil_d_mm / 1000;
+  const cd  = ant.wire_mm / 1000;
+  const N   = solveN(ant.L_uh * 1e-6, D, cd, pitch);
+  const Ni  = Math.max(1, Math.ceil(N));
+  const L_H = coilInductance(D, cd, pitch, Ni);
+  const Rac = acResist(D, cd, pitch, Ni, f);
+  const XL  = 2*Math.PI*f*L_H;
+  const Q   = XL>0&&Rac>0 ? XL/Rac : 0;
+  return { ...ant, N:Ni, N_frac:N, L_real_uh:L_H*1e6,
+           Rac, Q, XL, coil_len_mm: Ni*pitch*cd*1000 };
+}
+
+/* ═══════════════════════════════════════════════
+   UI
+═══════════════════════════════════════════════ */
+let topTab = 0;
+const TAB_COL = ['teal','teal','orange','yellow','purple'];
+
+function setTab(n) {
+  for(let i=0;i<5;i++) document.getElementById('tab'+i).className='tab';
+  document.getElementById('tab'+n).classList.add('active', TAB_COL[n]);
+  topTab = n; update();
+}
+
+function setMode(m) {
+  antennaMode = m;
+  document.getElementById('btn-dipole')  .classList.toggle('active', m==='dipole');
+  document.getElementById('btn-vertical').classList.toggle('active', m==='vertical');
+  update();
+}
+
+function update() {
+  const freq   = +document.getElementById('sl-freq').value;
+  const len    = +document.getElementById('sl-len').value;
+  const dist   = +document.getElementById('sl-dist').value;
+  const awg    = +document.getElementById('sl-wire').value;
+  const coil_d = +document.getElementById('sl-cd').value;
+  const pitch  = +document.getElementById('sl-pitch').value;
+  const wm     = awgToMm(awg);
+
+  document.getElementById('lbl-freq').textContent  = freq.toFixed(3)+' MHz';
+  document.getElementById('lbl-len').textContent   = len.toFixed(1)+' %';
+  document.getElementById('lbl-dist').textContent  = dist.toFixed(1)+' %';
+  document.getElementById('lbl-wire').textContent  = 'AWG '+awg+' ('+wm.toFixed(3)+' mm)';
+  document.getElementById('lbl-cd').textContent    = coil_d+' mm';
+  document.getElementById('lbl-pitch').textContent = pitch.toFixed(1)+' ×Ø';
+
+  const r = fullCalc(freq, len, dist, awg, coil_d, pitch);
+
+  const fmtL = v => v<0.1?(v*1000).toFixed(1)+' nH': v<10?v.toFixed(3)+' µH':v.toFixed(2)+' µH';
+  document.getElementById('res-L').textContent     = fmtL(r.L_uh);
+  document.getElementById('res-X').textContent     = r.Xl.toFixed(1)+' Ω';
+  document.getElementById('res-elem').textContent  = (r.element_m*100).toFixed(1)+' cm';
+  document.getElementById('res-total').textContent = (r.total_m  *100).toFixed(1)+' cm';
+  document.getElementById('res-turns').textContent = r.N>0 ? r.N+' w.' : '—';
+  document.getElementById('res-Q').textContent     = r.Q>1 ? Math.round(r.Q).toString() : '—';
+  document.getElementById('res-coillen').textContent = r.coil_len_mm>0 ? r.coil_len_mm.toFixed(0)+' mm' : '—';
+
+  // Verification: compare with VK3CPU screenshot values (28.6 MHz, 60%, d=10%, AWG20 → L≈1.9 µH)
+  const ref = calcAntenna(28.6, 60, 10, 20);
+  const ok  = Math.abs(ref.L_uh - 1.9) < 0.25;
+  document.getElementById('verify-badge').className = 'verify-badge' + (ok ? '' : ' warn');
+  document.getElementById('verify-text').textContent =
+    'VK3CPU check: 28.6 MHz / 60% / d=10% / AWG20 → L=' + ref.L_uh.toFixed(2) + ' µH ' + (ok ? '✓' : '⚠');
+
+  drawTopChart(freq, len, dist, awg, coil_d, pitch, r);
+  drawTurnsChart(freq, len, dist, awg, coil_d, pitch, r);
+  drawQChart(freq, len, dist, awg, coil_d, pitch, r);
+  drawAntenna(r, dist);
+}
+
+/* ═══════════════════════════════════════════════
+   CANVAS HELPERS
+═══════════════════════════════════════════════ */
+const C = {
+  teal:'#00d4aa',orange:'#ff7040',purple:'#9b72cf',
+  yellow:'#e6c229',blue:'#58a6ff',red:'#f47068',
+  muted:'#5a7a96',grid:'#131c27',border:'#1e2d3d',bg:'#0b0f14',
+};
+
+function prep(id) {
+  const el=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  // Store the original CSS height once, so repeated calls don't multiply it
+  if(!el.dataset.cssH) el.dataset.cssH = el.getAttribute('height') || el.offsetHeight;
+  const W=el.getBoundingClientRect().width||el.offsetWidth||700;
+  const H=+el.dataset.cssH;
+  el.style.height = H+'px';   // lock CSS height so the element never grows
+  el.width=W*dpr; el.height=H*dpr;
+  const ctx=el.getContext('2d');
+  ctx.scale(dpr,dpr); ctx._W=W; ctx._H=H;
+  return ctx;
+}
+
+function fmt(v) {
+  if(!isFinite(v)) return '?';
+  if(v>=10000) return (v/1000).toFixed(0)+'k';
+  if(v>=1000)  return (v/1000).toFixed(1)+'k';
+  if(v>=100)   return v.toFixed(0);
+  if(v>=10)    return v.toFixed(1);
+  return v.toFixed(2);
+}
+
+function frame(ctx, pad, xMn,xMx,yMn,yMx, xL,yL,title) {
+  const {l:pl,r:pr,t:pt,b:pb}=pad;
+  const W=ctx._W,H=ctx._H,gW=W-pl-pr,gH=H-pt-pb;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+  ctx.lineWidth=1; ctx.strokeStyle=C.grid;
+  for(let i=0;i<=5;i++){
+    const x=pl+i/5*gW;
+    ctx.beginPath();ctx.moveTo(x,pt);ctx.lineTo(x,pt+gH);ctx.stroke();
+    const v=xMn+i/5*(xMx-xMn);
+    ctx.fillStyle=C.muted; ctx.font='10px Share Tech Mono,monospace';
+    ctx.textAlign='center'; ctx.fillText(v<10?v.toFixed(1):v.toFixed(0),x,H-pb+14);
+  }
+  for(let i=0;i<=4;i++){
+    const y=pt+i/4*gH;
+    ctx.beginPath();ctx.moveTo(pl,y);ctx.lineTo(pl+gW,y);ctx.stroke();
+    const v=yMx-i/4*(yMx-yMn);
+    ctx.fillStyle=C.muted; ctx.textAlign='right'; ctx.fillText(fmt(v),pl-5,y+4);
+  }
+  ctx.strokeStyle=C.border; ctx.lineWidth=1.5; ctx.strokeRect(pl,pt,gW,gH);
+  ctx.fillStyle=C.muted; ctx.font='11px Outfit,sans-serif';
+  ctx.textAlign='center'; ctx.fillText(xL,pl+gW/2,H-2);
+  ctx.save(); ctx.translate(11,pt+gH/2); ctx.rotate(-Math.PI/2); ctx.fillText(yL,0,0); ctx.restore();
+  ctx.fillStyle='#8090a0'; ctx.font='600 11px Outfit,sans-serif';
+  ctx.textAlign='left'; ctx.fillText(title,pl+6,pt-6);
+  return {pl,pr,pt,pb,gW,gH};
+}
+
+function mX(v,mn,mx,pl,gW){return pl+(v-mn)/(mx-mn)*gW;}
+function mY(v,mn,mx,pt,gH){return pt+gH-(v-mn)/(mx-mn)*gH;}
+
+function line(ctx,pts,xMn,xMx,yMn,yMx,g,col,lw=2){
+  if(pts.length<2) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(g.pl,g.pt,g.gW,g.gH); ctx.clip();
+  ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.lineJoin='round';
+  ctx.beginPath(); let first=true;
+  for(const [x,y] of pts){
+    if(!isFinite(y)||y<0||y>yMx*60){first=true;continue;}
+    const cx=mX(x,xMn,xMx,g.pl,g.gW),cy=mY(Math.min(y,yMx*1.01),yMn,yMx,g.pt,g.gH);
+    first?(ctx.moveTo(cx,cy),first=false):ctx.lineTo(cx,cy);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+function dot(ctx,x,y,xMn,xMx,yMn,yMx,g,col,r=5){
+  if(!isFinite(y)||y<yMn||y>yMx) return;
+  const cx=mX(x,xMn,xMx,g.pl,g.gW),cy=mY(y,yMn,yMx,g.pt,g.gH);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle=col; ctx.fill();
+  ctx.strokeStyle=C.bg; ctx.lineWidth=2; ctx.stroke();
+}
+
+function vline(ctx,x,xMn,xMx,g,col){
+  const cx=mX(x,xMn,xMx,g.pl,g.gW);
+  ctx.save(); ctx.beginPath(); ctx.rect(g.pl,g.pt,g.gW,g.gH); ctx.clip();
+  ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(cx,g.pt); ctx.lineTo(cx,g.pt+g.gH); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+}
+
+function lgnd(ctx,W,pt,items){
+  let x=W-14;
+  for(let i=items.length-1;i>=0;i--){
+    const [lb,cl]=items[i];
+    ctx.font='10px Share Tech Mono,monospace';
+    x-=ctx.measureText(lb).width+4;
+    ctx.fillStyle=cl; ctx.fillText(lb,x,pt-6);
+    x-=20; ctx.strokeStyle=cl; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x,pt-10); ctx.lineTo(x+16,pt-10); ctx.stroke();
+    x-=8;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   TOP CHART
+═══════════════════════════════════════════════ */
+function drawTopChart(freq,len,dist,awg,coil_d,pitch,r) {
+  const ctx=prep('chart-top');
+  const pad={l:55,r:20,t:28,b:32};
+  const fMn=1.8, fMx=30;
+
+  if(topTab===0){
+    const pts=[];
+    for(let f=fMn;f<=fMx;f+=0.15) pts.push([f, calcAntenna(f,len,dist,awg).L_uh]);
+    const yMx=Math.min(2000,Math.max(5,...pts.filter(([,y])=>y>0&&isFinite(y)).map(([,y])=>y))*1.12);
+    const g=frame(ctx,pad,fMn,fMx,0,yMx,'Frequentie (MHz)','L (µH)','Benodigde inductantie vs frequentie');
+    line(ctx,pts,fMn,fMx,0,yMx,g,C.teal);
+    vline(ctx,freq,fMn,fMx,g,C.orange+'66');
+    dot(ctx,freq,r.L_uh,fMn,fMx,0,yMx,g,C.teal);
+    lgnd(ctx,ctx._W,pad.t,[['L µH',C.teal]]);
+
+  } else if(topTab===1){
+    const pts=[];
+    for(let l=10;l<=99;l+=0.5) pts.push([l, calcAntenna(freq,l,dist,awg).L_uh]);
+    const yMx=Math.min(3000,Math.max(5,...pts.filter(([,y])=>y>0&&isFinite(y)).map(([,y])=>y))*1.12);
+    const g=frame(ctx,pad,10,99,0,yMx,'Antenne lengte (%)','L (µH)','Benodigde inductantie vs antenne lengte');
+    line(ctx,pts,10,99,0,yMx,g,C.teal);
+    vline(ctx,len,10,99,g,C.orange+'66');
+    dot(ctx,len,r.L_uh,10,99,0,yMx,g,C.teal);
+    lgnd(ctx,ctx._W,pad.t,[['L µH',C.teal]]);
+
+  } else if(topTab===2){
+    const pts=[];
+    for(let d=10;d<=80;d+=0.5) pts.push([d, calcAntenna(freq,len,d,awg).L_uh]);
+    const yMx=Math.min(3000,Math.max(5,...pts.filter(([,y])=>y>0&&isFinite(y)).map(([,y])=>y))*1.12);
+    const g=frame(ctx,pad,10,80,0,yMx,'Spoelpositie d (%)','L (µH)','Benodigde inductantie vs spoelpositie');
+    line(ctx,pts,10,80,0,yMx,g,C.orange);
+    vline(ctx,dist,10,80,g,C.teal+'66');
+    dot(ctx,dist,r.L_uh,10,80,0,yMx,g,C.orange);
+    lgnd(ctx,ctx._W,pad.t,[['L µH',C.orange]]);
+
+  } else if(topTab===3){
+    const pts=[];
+    for(let f=fMn;f<=fMx;f+=0.15) pts.push([f, fullCalc(f,len,dist,awg,coil_d,pitch).N]);
+    const yMx=Math.min(500,Math.max(5,...pts.filter(([,y])=>y>0&&isFinite(y)).map(([,y])=>y))*1.15);
+    const g=frame(ctx,pad,fMn,fMx,0,yMx,'Frequentie (MHz)','Wikkelingen','Wikkelingen vs frequentie');
+    line(ctx,pts,fMn,fMx,0,yMx,g,C.yellow);
+    vline(ctx,freq,fMn,fMx,g,C.orange+'66');
+    dot(ctx,freq,r.N,fMn,fMx,0,yMx,g,C.yellow);
+    lgnd(ctx,ctx._W,pad.t,[['Turns',C.yellow]]);
+
+  } else {
+    const pts=[];
+    for(let f=fMn;f<=fMx;f+=0.15){
+      const v=fullCalc(f,len,dist,awg,coil_d,pitch).Q;
+      pts.push([f, isFinite(v)&&v<9999?v:0]);
+    }
+    const yMx=Math.max(20,...pts.map(([,y])=>y))*1.12;
+    const g=frame(ctx,pad,fMn,fMx,0,yMx,'Frequentie (MHz)','Q','Q-factor vs frequentie');
+    line(ctx,pts,fMn,fMx,0,yMx,g,C.purple);
+    vline(ctx,freq,fMn,fMx,g,C.orange+'66');
+    dot(ctx,freq,r.Q,fMn,fMx,0,yMx,g,C.purple);
+    lgnd(ctx,ctx._W,pad.t,[['Q',C.purple]]);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   TURNS CHART
+═══════════════════════════════════════════════ */
+function drawTurnsChart(freq,len,dist,awg,coil_d,pitch,r){
+  const ctx=prep('chart-turns');
+  const pad={l:48,r:14,t:26,b:30};
+  const fMn=1.8,fMx=30;
+  const LS=[50,75,90],cols=[C.orange,C.teal,C.purple];
+  let yMx=5;
+  for(const ll of LS) for(let f=fMn;f<=fMx;f+=0.3){
+    const v=fullCalc(f,ll,dist,awg,coil_d,pitch).N;
+    if(isFinite(v)&&v>0) yMx=Math.max(yMx,v);
+  }
+  yMx=Math.min(yMx*1.15,400);
+  const g=frame(ctx,pad,fMn,fMx,0,yMx,'Freq (MHz)','Turns','Wikkelingen 50/75/90%');
+  for(let i=0;i<LS.length;i++){
+    const pts=[];
+    for(let f=fMn;f<=fMx;f+=0.2) pts.push([f,fullCalc(f,LS[i],dist,awg,coil_d,pitch).N]);
+    line(ctx,pts,fMn,fMx,0,yMx,g,cols[i],1.5);
+  }
+  vline(ctx,freq,fMn,fMx,g,C.orange+'66');
+  for(let i=0;i<LS.length;i++)
+    dot(ctx,freq,fullCalc(freq,LS[i],dist,awg,coil_d,pitch).N,fMn,fMx,0,yMx,g,cols[i],4);
+  lgnd(ctx,ctx._W,pad.t,LS.map((l,i)=>[l+'%',cols[i]]));
+}
+
+/* ═══════════════════════════════════════════════
+   Q CHART
+═══════════════════════════════════════════════ */
+function drawQChart(freq,len,dist,awg,coil_d,pitch,r){
+  const ctx=prep('chart-q');
+  const pad={l:48,r:14,t:26,b:30};
+  const fMn=1.8,fMx=30;
+  const LS=[50,75,90],cols=[C.orange,C.teal,C.purple];
+  let yMx=10;
+  for(const ll of LS) for(let f=fMn;f<=fMx;f+=0.3){
+    const v=fullCalc(f,ll,dist,awg,coil_d,pitch).Q;
+    if(isFinite(v)&&v>0&&v<9000) yMx=Math.max(yMx,v);
+  }
+  yMx=Math.min(yMx*1.15,2000);
+  const g=frame(ctx,pad,fMn,fMx,0,yMx,'Freq (MHz)','Q','Q-factor 50/75/90%');
+  for(let i=0;i<LS.length;i++){
+    const pts=[];
+    for(let f=fMn;f<=fMx;f+=0.2){
+      const v=fullCalc(f,LS[i],dist,awg,coil_d,pitch).Q;
+      pts.push([f,isFinite(v)&&v<9000?v:0]);
+    }
+    line(ctx,pts,fMn,fMx,0,yMx,g,cols[i],1.5);
+  }
+  vline(ctx,freq,fMn,fMx,g,C.orange+'66');
+  for(let i=0;i<LS.length;i++){
+    const v=fullCalc(freq,LS[i],dist,awg,coil_d,pitch).Q;
+    dot(ctx,freq,isFinite(v)&&v<9000?v:0,fMn,fMx,0,yMx,g,cols[i],4);
+  }
+  lgnd(ctx,ctx._W,pad.t,LS.map((l,i)=>[l+'%',cols[i]]));
+}
+
+/* ═══════════════════════════════════════════════
+   ANTENNA VISUALISATION
+═══════════════════════════════════════════════ */
+function drawAntenna(r, dist) {
+  const ctx=prep('chart-ant');
+  const W=ctx._W, H=ctx._H;
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+  const lw=2.5;
+
+  if(antennaMode==='dipole'){
+    const cx=W/2, cy=H/2, arm=W*0.37, cp=arm*dist/100;
+    ctx.strokeStyle=C.muted; ctx.lineWidth=lw;
+    [[cx,cy,cx-cp,cy],[cx,cy,cx+cp,cy],
+     [cx-arm,cy,cx-cp-13,cy],[cx+cp+13,cy,cx+arm,cy]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    });
+    coilBox(ctx,cx-cp,cy); coilBox(ctx,cx+cp,cy);
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);
+    ctx.fillStyle=C.orange;ctx.fill();
+    ctx.fillStyle=C.muted; ctx.font='10px Share Tech Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText('FEED',cx,cy-18);
+    ctx.fillStyle=C.teal; ctx.fillText('spoel',cx-cp,cy-18); ctx.fillText('spoel',cx+cp,cy-18);
+    ctx.fillStyle=C.muted;
+    ctx.fillText((r.element_m*100).toFixed(0)+' cm',cx-arm/2-cp/2,cy+20);
+    ctx.fillText((r.element_m*100).toFixed(0)+' cm',cx+arm/2+cp/2,cy+20);
+  } else {
+    const x=W/2, yB=H-16, yT=16, tot=yB-yT, cy2=yB-tot*dist/100;
+    ctx.strokeStyle=C.muted; ctx.lineWidth=lw;
+    ctx.beginPath();ctx.moveTo(x,yB);ctx.lineTo(x,cy2+12);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,cy2-12);ctx.lineTo(x,yT);ctx.stroke();
+    coilBoxV(ctx,x,cy2);
+    ctx.beginPath();ctx.arc(x,yB,5,0,Math.PI*2);
+    ctx.fillStyle=C.orange;ctx.fill();
+    ctx.font='10px Share Tech Mono,monospace';
+    ctx.fillStyle=C.muted; ctx.textAlign='left'; ctx.fillText('FEED',x+10,yB+4);
+    ctx.fillStyle=C.teal;  ctx.fillText('spoel',x+10,cy2+4);
+    ctx.fillStyle=C.muted; ctx.fillText((r.element_m*100).toFixed(0)+' cm',x+10,yT+14);
+  }
+}
+
+function coilBox(ctx,x,y){
+  ctx.fillStyle=C.bg; ctx.fillRect(x-13,y-7,26,14);
+  ctx.strokeStyle=C.teal; ctx.lineWidth=1.5; ctx.strokeRect(x-13,y-7,26,14);
+  for(let i=-7;i<=7;i+=5){ctx.beginPath();ctx.arc(x+i,y,3,Math.PI,0);ctx.stroke();}
+}
+function coilBoxV(ctx,x,y){
+  ctx.fillStyle=C.bg; ctx.fillRect(x-10,y-18,20,36);
+  ctx.strokeStyle=C.teal; ctx.lineWidth=1.5; ctx.strokeRect(x-10,y-18,20,36);
+  for(let i=-10;i<=10;i+=7){ctx.beginPath();ctx.arc(x,y+i,3.5,-Math.PI/2,Math.PI/2);ctx.stroke();}
+}
+
+/* INIT */
+document.getElementById('tab0').classList.add('active','teal');
+window.addEventListener('resize', update);
+update();
+</script>
+</body>
+</html>
